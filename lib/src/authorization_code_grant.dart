@@ -75,6 +75,9 @@ class AuthorizationCodeGrant {
   /// The HTTP client used to make HTTP requests.
   http.Client _httpClient;
 
+  /// Whether auth for Slack API
+  final bool _slackApiAuth;
+
   /// The URL to which the resource owner will be redirected after they
   /// authorize this client with the authorization server.
   Uri _redirectEndpoint;
@@ -110,10 +113,12 @@ class AuthorizationCodeGrant {
       {this.secret,
       String delimiter,
       bool basicAuth: true,
-      http.Client httpClient})
+      http.Client httpClient,
+      bool slackApiAuth: false})
       : _basicAuth = basicAuth,
         _httpClient = httpClient == null ? new http.Client() : httpClient,
-        _delimiter = delimiter ?? ' ';
+        _delimiter = delimiter ?? ' ',
+        _slackApiAuth = slackApiAuth;
 
   /// Returns the URL to which the resource owner should be redirected to
   /// authorize this client.
@@ -265,8 +270,8 @@ class AuthorizationCodeGrant {
     var response = await _httpClient.post(this.tokenEndpoint,
         headers: headers, body: body);
 
-    var credentials = handleAccessTokenResponse(
-        response, tokenEndpoint, startTime, _scopes, _delimiter);
+    var credentials = handleCustomAccessTokenResponse(
+        response, tokenEndpoint, startTime, _scopes, _delimiter, _slackApiAuth);
     return new Client(credentials,
         identifier: this.identifier,
         secret: this.secret,

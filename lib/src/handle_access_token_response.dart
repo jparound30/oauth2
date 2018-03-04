@@ -91,6 +91,66 @@ Credentials handleAccessTokenResponse(http.Response response, Uri tokenEndpoint,
       expiration: expiration);
 }
 
+Credentials handleCustomAccessTokenResponse(http.Response response, Uri tokenEndpoint,
+    DateTime startTime, List<String> scopes, String delimiter, bool isSlackApiAuth) {
+  if (!isSlackApiAuth) {
+    // for Normal OAuth2 protocols.
+    return handleAccessTokenResponse(response, tokenEndpoint, startTime, scopes, delimiter);
+  }
+
+  // for SlackAPI specific processes.
+  if (response.statusCode != 200) _handleErrorResponse(response, tokenEndpoint);
+
+  validate(condition, message) =>
+      _validate(response, tokenEndpoint, condition, message);
+
+  var contentTypeString = response.headers['content-type'];
+  var contentType =
+  contentTypeString == null ? null : new MediaType.parse(contentTypeString);
+
+  // The spec requires a content-type of application/json, but some endpoints
+  // (e.g. Dropbox) serve it as text/javascript instead.
+  validate(
+      contentType != null &&
+          (contentType.mimeType == "application/json" ||
+              contentType.mimeType == "text/javascript"),
+      'content-type was "$contentType", expected "application/json"');
+
+  Map<String, dynamic> parameters;
+  try {
+    var untypedParameters = JSON.decode(response.body);
+    validate(untypedParameters is Map,
+        'parameters must be a map, was "$parameters"');
+    parameters = DelegatingMap.typed(untypedParameters);
+  } on FormatException {
+    validate(false, 'invalid JSON');
+  }
+
+  for (var requiredParameter in ['access_token']) {
+    validate(parameters.containsKey(requiredParameter),
+        'did not contain required parameter "$requiredParameter"');
+    validate(
+        parameters[requiredParameter] is String,
+        'required parameter "$requiredParameter" was not a string, was '
+            '"${parameters[requiredParameter]}"');
+  }
+
+  for (var name in ['scope']) {
+    var value = parameters[name];
+    validate(value == null || value is String,
+        'parameter "$name" was not a string, was "$value"');
+  }
+
+  var scope = parameters['scope'] as String;
+  if (scope != null) scopes = scope.split(delimiter);
+
+  return new Credentials(parameters['access_token'],
+      refreshToken: parameters['refresh_token'],
+      tokenEndpoint: tokenEndpoint,
+      scopes: scopes);
+
+}
+
 /// Throws the appropriate exception for an error response from the
 /// authorization server.
 void _handleErrorResponse(http.Response response, Uri tokenEndpoint) {

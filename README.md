@@ -1,3 +1,25 @@
+## Notice
+ ```
+This library is based on dart-lang/oauth2.
+All dart-lang/oauth2's supported features has included.
+
+Add SlackAPI's OAuth2 handling  / with dirty hack... ;-)
+
+[samples]
+        var grant = new oauth2.AuthorizationCodeGrant(
+            identifier, authorizationEndpoint, tokenEndpoint,
+            secret: secret, slackApiAuth: true);
+
+        var authUrl = grant.getAuthorizationUrl(redirectUrl, scopes: ["channels:read", 'channels:history']);
+
+        grant.handleAuthorizationResponse(Uri.parse(state.url)
+            .queryParameters).then((c) {
+          this.client = c;
+        }
+
+ ```  
+
+
 A client library for authenticating with a remote service via OAuth2 on
 behalf of a user, and making authorized HTTP requests with the user's OAuth2
 credentials.
